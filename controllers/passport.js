@@ -5,23 +5,28 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/index');
 
 module.exports = function(passport) {
-  passport.use(new LocalStrategy({ usernameField: 'email' },
-    function (email,password,done) {
-        User.findOne({where : {
-            email: email
-        }}).then(function (user) {
-            bcrypt.compare(password, user.password, function (err,result) {
-                if (err) { return done(err); }
-                if(!result) {
-                    return done(null, false, { message: 'Incorrect username and password' });
-                }
-                return done(null, user);
-            })
-        }).catch(function (err) {
-            return done(err);
-        })
-    }
-));
+  passport.use(
+    new LocalStrategy({ usernameField: 'email' }, (email, password, done) => {
+      // Match user
+      User.findOne({
+        email: email
+      }).then(user => {
+        if (!user) {
+          return done(null, false);
+        }
+
+        // Match password
+        bcrypt.compare(password, user.password, (err, isMatch) => {
+          if (err) throw err;
+          if (isMatch) {
+            return done(null, user);
+          } else {
+            return done(null, false);
+          }
+        });
+      });
+    })
+  );
 
   passport.serializeUser(function(user, done) {
     done(null, user.id);
